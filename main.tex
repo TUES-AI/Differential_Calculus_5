@@ -1,0 +1,1194 @@
+% !TEX program = pdflatex
+\documentclass[11pt,a4paper]{article}
+
+% --- Български (pdfLaTeX) ---
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[bulgarian]{babel}
+
+% --- Математика и форматиране ---
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{amsthm}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{enumitem}
+
+% --- Диаграми ---
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta, calc, decorations.markings, patterns}
+
+\geometry{margin=2.2cm}
+
+% --- Повече въздух между редовете ---
+\linespread{1.08}
+\setlength{\parskip}{0.35\baselineskip}
+\setlength{\parindent}{0pt}
+\setlength{\abovedisplayskip}{0.6\baselineskip}
+\setlength{\belowdisplayskip}{0.6\baselineskip}
+\setlength{\abovedisplayshortskip}{0.4\baselineskip}
+\setlength{\belowdisplayshortskip}{0.4\baselineskip}
+
+% --- Теореми и доказателства ---
+\renewcommand{\proofname}{Доказателство}
+\newtheorem*{theorem}{Твърдение}
+
+% --- Вектори и оператори ---
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\grad}{\nabla}
+\newcommand{\R}{\mathbb{R}}
+
+% --- Мини задачи ---
+\newcommand{\minitask}[1]{\par\smallskip\noindent\textbf{Мини-задача.} #1}
+\newcommand{\answer}[1]{\par\noindent\textit{Отговор:} #1\par\smallskip}
+
+% Задачи
+\newlist{zadachi}{enumerate}{1}
+\setlist[itemize]{itemsep=0.35\baselineskip, topsep=0.2\baselineskip}
+\setlist[enumerate]{itemsep=0.35\baselineskip, topsep=0.2\baselineskip}
+\setlist[zadachi]{label=\textbf{Задача \arabic*.}, leftmargin=*, itemsep=0.55\baselineskip, topsep=0.2\baselineskip}
+
+% Таблично оформление
+\renewcommand{\arraystretch}{1.6}
+\setlength{\tabcolsep}{10pt}
+
+\title{Урок 5 -- Градиент и частни производни}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+% ============================================================
+\section{Цели на урока}
+В този урок ще:
+\begin{itemize}
+  \item изградим интуиция за промяна на величина, която зависи от няколко фактора;
+  \item започнем от производната на една променлива като мост към многомерния случай;
+  \item дефинираме частни производни, насочена производна и градиент;
+  \item тълкуваме геометрично градиента и линейната апроксимация;
+  \item разгледаме верижното правило за функции на няколко променливи;
+  \item разгледаме втори производни, Хесиева матрица и тест за екстремум;
+  \item видим връзката с градиентния спуск (gradient descent) в AI;
+  \item решим 25 задачи с различна трудност и подробни решения.
+\end{itemize}
+
+% ============================================================
+\section{Въведение}
+В реални проблеми една величина често зависи от няколко независими параметъра:
+позиция в равнината, температура и налягане, цена и реклама и т.н.
+Вместо да разглеждаме само една посока на промяна, трябва да умеем да
+измерваме ефекта от отделните фактори и да определяме посоката на най-бързо
+нарастване. Именно тук се появяват \textbf{частните производни} и \textbf{градиентът}.
+
+Започваме от производната на една променлива, защото тя е най-простата и ясна
+интерпретация на ``локален наклон'', а многомерните понятия я обобщават по
+естествен начин.
+
+% ============================================================
+\section{Интуитивни примери (без формули)}
+
+\begin{itemize}
+  \item \textbf{Карта на височини.}
+    Представяме си хълм. Ако се придвижим на север или изток, височината
+    се променя с различна скорост. Интересува ни посоката, в която височината
+    расте \emph{най-бързо}.
+  \item \textbf{Температура в стая.}
+    Температурата зависи от мястото. Малка крачка наляво може да даде
+    различна промяна от същата крачка напред.
+  \item \textbf{Цена и продажби.}
+    Печалбата зависи от цена и реклама. Ако променим само цената, ефектът
+    е различен от този при промяна само на рекламата.
+  \item \textbf{Невронна мрежа.}
+    Функцията на загуба зависи от хиляди тегла. Градиентът показва
+    как да променим всяко тегло, за да намалим грешката.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.4]
+  % Axes
+  \draw[->] (-2.5,0) -- (2.5,0) node[right] {$x$};
+  \draw[->] (0,-2.5) -- (0,2.5) node[above] {$y$};
+  % Contour circles
+  \foreach \r/\lbl in {0.6/c_1,1.2/c_2,1.8/c_3} {
+    \draw[gray!70, thick] (0,0) circle (\r);
+  }
+  \node[gray] at (0.4,-0.8) {$c_1$};
+  \node[gray] at (0.8,-1.4) {$c_2$};
+  \node[gray] at (1.2,-2.0) {$c_3$};
+  % Gradient arrow
+  \draw[-{Stealth[length=3mm]},thick,blue] (0.6,0.3) -- (1.6,0.8)
+    node[above] {$\grad f$};
+  % Tangent to contour
+  \draw[thick,red] (0.9,0.82) -- (0.3,1.15);
+  \node[red, right] at (0.9,1.0) {допирателна};
+  % Right angle marker
+  \draw[blue] (0.72,0.54) -- (0.62,0.62) -- (0.70,0.72);
+\end{tikzpicture}
+\caption{Ниви линии и градиент: $\grad f$ сочи в посоката на най-бързо
+нарастване и е \emph{перпендикулярен} на нивата.}
+\end{figure}
+
+% ============================================================
+\section{От едномерни към многомерни производни}
+
+\subsection{Припомняне: производна на функция от една променлива}
+Нека $y=f(x)$. Производната в точка $x_0$ се дефинира чрез граница:
+\[
+ f'(x_0)=\lim_{h\to 0}\frac{f(x_0+h)-f(x_0)}{h},
+\]
+ако границата съществува.
+Геометрично: наклонът на допирателната към графиката в точка $(x_0, f(x_0))$.
+
+\minitask{Намерете $f'(2)$ за $f(x)=3x^2-1$.}
+\answer{$f'(x)=6x$, следователно $f'(2)=\boxed{12}$.}
+
+\minitask{Намерете $f'(x)$ за $f(x)=x^3-5x+2$ и изчислете $f'(1)$.}
+\answer{$f'(x)=3x^2-5$, следователно $f'(1)=3-5=\boxed{-2}$.}
+
+% ============================================================
+\subsection{Функции от две променливи}
+Функция от две променливи $f\colon \R^2 \to \R$ съпоставя на
+двойка $(x,y)$ число $f(x,y)$.
+
+Графиката е \textbf{повърхност} в $\R^3$: множеството от точки $(x,y,f(x,y))$.
+
+\textbf{Линия на ниво:} Кривата $f(x,y)=c$ за фиксирано $c$.
+Тя е ``хоризонтален разрез'' на повърхността на височина $c$
+(като контурните линии на топографска карта).
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  view={55}{30},
+  axis lines=center,
+  xlabel={$x$}, ylabel={$y$}, zlabel={$z$},
+  xmin=-2.2, xmax=2.2,
+  ymin=-2.2, ymax=2.2,
+  zmin=0, zmax=5,
+  width=0.75\textwidth,
+  height=0.38\textheight,
+  samples=25,
+  domain=-2:2,
+  y domain=-2:2
+]
+\addplot3[surf, opacity=0.65, colormap/viridis, shader=interp] {x^2+y^2};
+\end{axis}
+\end{tikzpicture}
+\caption{Повърхността $z = x^2 + y^2$ (параболоид). Нивата $z=c$ са
+концентрични окръжности.}
+\end{figure}
+
+% ============================================================
+\subsection{Частни производни}
+За да видим как се променя $f$ само при изменение на $x$
+(с фиксирано $y$), дефинираме \textbf{частната производна по $x$}:
+\[
+\frac{\partial f}{\partial x}(x_0,y_0)
+  =\lim_{h\to 0}\frac{f(x_0+h,\,y_0)-f(x_0,y_0)}{h}.
+\]
+
+Аналогично за $y$:
+\[
+\frac{\partial f}{\partial y}(x_0,y_0)
+  =\lim_{h\to 0}\frac{f(x_0,\,y_0+h)-f(x_0,y_0)}{h}.
+\]
+
+\textbf{Практически:} За да намерим $\dfrac{\partial f}{\partial x}$,
+диференцираме по $x$ и третираме $y$ като константа (и обратно).
+
+\textbf{Означения:} $f_x$, $\dfrac{\partial f}{\partial x}$,
+$\partial_x f$, $D_x f$ --- всичко означава едно и също.
+
+\begin{figure}[h]
+\centering
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  axis lines=middle,
+  xlabel={$x$}, ylabel={$z$},
+  xmin=-2, xmax=2,
+  ymin=0, ymax=5,
+  width=0.95\textwidth,
+  height=0.28\textheight,
+  samples=200
+]
+\addplot[blue,thick] {x^2+1};
+\addplot[red,mark=*] coordinates {(1,2)};
+\addplot[red, dashed, domain=0:2] {2*x};
+\node[red] at (axis cs:1.6,2.6) {\small наклон$=2x|_{x=1}=2$};
+\end{axis}
+\end{tikzpicture}
+\caption*{Сечение при $y=1$: $z=x^2+1$.}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  axis lines=middle,
+  xlabel={$y$}, ylabel={$z$},
+  xmin=-2, xmax=2,
+  ymin=0, ymax=5,
+  width=0.95\textwidth,
+  height=0.28\textheight,
+  samples=200
+]
+\addplot[blue,thick] {x^2+1};
+\addplot[red,mark=*] coordinates {(1,2)};
+\addplot[red, dashed, domain=0:2] {2*x};
+\node[red] at (axis cs:1.6,2.6) {\small наклон$=2y|_{y=1}=2$};
+\end{axis}
+\end{tikzpicture}
+\caption*{Сечение при $x=1$: $z=1+y^2$.}
+\end{minipage}
+\caption{Сечения на повърхността $z=x^2+y^2$: фиксирано $y=1$ (ляво) и
+фиксирано $x=1$ (дясно). Наклоните на допирателните са частните производни.}
+\end{figure}
+
+\minitask{За $f(x,y)=x^2+3y$ намерете $f_x$ и $f_y$ в точка $(1,2)$.}
+\answer{$f_x=2x$, $f_y=3$, следователно $f_x(1,2)=\boxed{2}$, $f_y(1,2)=\boxed{3}$.}
+
+\minitask{За $f(x,y)=x^3y^2-4xy+7$ намерете $f_x$ и $f_y$.}
+\answer{$f_x=3x^2y^2-4y$, $f_y=2x^3y-4x$.}
+
+\minitask{За $f(x,y)=\sin(xy)$ намерете $f_x(1,\pi)$.}
+\answer{$f_x = y\cos(xy)$, $f_x(1,\pi)=\pi\cos(\pi)=\boxed{-\pi}$.}
+
+% ============================================================
+\subsection{Таблица: правила за частно диференциране}
+
+Правилата са \textbf{същите} като за обикновено диференциране --- просто
+третираме другата променлива като константа.
+
+\begin{center}
+\small
+\begin{tabular}{|p{0.32\textwidth}|p{0.58\textwidth}|}
+\hline
+\textbf{Правило} & \textbf{Формула (по $x$, $y$ е конст.)} \\
+\hline
+Константен множител & $\dfrac{\partial}{\partial x}[c\,f] = c\,f_x$ \\
+\hline
+Сума/разлика & $\dfrac{\partial}{\partial x}[f\pm g] = f_x \pm g_x$ \\
+\hline
+Произведение & $\dfrac{\partial}{\partial x}[fg] = f_x g + f g_x$ \\
+\hline
+Частно & $\dfrac{\partial}{\partial x}\!\left[\dfrac{f}{g}\right]
+         = \dfrac{f_x g - f g_x}{g^2}$ \\
+\hline
+Верижно правило & $\dfrac{\partial}{\partial x}[h(f(x,y))] = h'(f)\cdot f_x$ \\
+\hline
+Степен & $\dfrac{\partial}{\partial x}[x^n] = nx^{n-1}$ \\
+\hline
+$e$-степен & $\dfrac{\partial}{\partial x}[e^{f(x,y)}] = e^{f}\cdot f_x$ \\
+\hline
+Логаритъм & $\dfrac{\partial}{\partial x}[\ln f(x,y)] = \dfrac{f_x}{f}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+% ============================================================
+\subsection{Градиент}
+Градиентът събира частните производни в един \textbf{вектор}:
+\[
+\grad f(x,y)=\left(\frac{\partial f}{\partial x},\;
+  \frac{\partial f}{\partial y}\right).
+\]
+
+За $n$ променливи:
+\[
+\grad f(x_1,\ldots,x_n)=\left(\frac{\partial f}{\partial x_1},\;
+  \frac{\partial f}{\partial x_2},\;\ldots,\;
+  \frac{\partial f}{\partial x_n}\right).
+\]
+
+\textbf{Ключови свойства:}
+\begin{itemize}
+  \item $\grad f$ сочи в посоката на \textbf{най-бързо нарастване} на $f$.
+  \item $-\grad f$ сочи в посоката на \textbf{най-бързо намаляване} на $f$.
+  \item $\|\grad f\|$ е \textbf{скоростта} на нарастване в тази посока.
+  \item $\grad f$ е \textbf{перпендикулярен} на нивата $f=\text{const}$.
+  \item Ако $\grad f = \vect{0}$, точката е \textbf{критична} (кандидат
+        за екстремум или седлова точка).
+\end{itemize}
+
+\minitask{Намерете $\grad f(2,3)$ за $f(x,y)=xy$.}
+\answer{$\grad f=(y,x)$, следователно $\grad f(2,3)=\boxed{(3,2)}$.}
+
+\minitask{Намерете $\grad f(1,0)$ за $f(x,y)=e^x\cos y$.}
+\answer{$f_x=e^x\cos y$, $f_y=-e^x\sin y$.
+$\grad f(1,0)=(e\cdot 1, -e\cdot 0)=\boxed{(e,0)}$.}
+
+\minitask{Намерете $\grad f(1,-1)$ за $f(x,y)=x^2-2xy+y^3$.}
+\answer{$f_x=2x-2y=2+2=4$, $f_y=-2x+3y^2=-2+3=1$.
+$\grad f(1,-1)=\boxed{(4,1)}$.}
+
+% ============================================================
+\subsection{Насочена производна}
+Нека $\vect{u}=(u_1,u_2)$ е \textbf{единичен} вектор ($\|\vect{u}\|=1$).
+Насочената производна показва скоростта на промяна на $f$ в посока $\vect{u}$:
+\[
+D_{\vect{u}}f(x_0,y_0)
+  =\lim_{t\to 0}\frac{f(x_0+t u_1,\, y_0+t u_2)-f(x_0,y_0)}{t}.
+\]
+
+\begin{theorem}
+Ако $f$ е диференцируема в $(x_0,y_0)$, то
+\[
+D_{\vect{u}}f(x_0,y_0)=\grad f(x_0,y_0)\cdot \vect{u}
+  = f_x(x_0,y_0)\,u_1 + f_y(x_0,y_0)\,u_2.
+\]
+\end{theorem}
+
+\begin{proof}
+Разглеждаме $g(t)=f(x_0+t u_1,\, y_0+t u_2)$. По верижното правило:
+\[
+ g'(t)=f_x(x_0+t u_1,\, y_0+t u_2)\,u_1
+      +f_y(x_0+t u_1,\, y_0+t u_2)\,u_2.
+\]
+При $t=0$:
+$g'(0)=f_x(x_0,y_0)\,u_1+f_y(x_0,y_0)\,u_2=\grad f(x_0,y_0)\cdot \vect{u}$.
+\end{proof}
+
+\textbf{Важно!} Ако посоката $\vect{v}$ \emph{не} е единична, трябва
+първо да я нормираме: $\vect{u}=\dfrac{\vect{v}}{\|\vect{v}\|}$.
+
+\begin{theorem}
+Максималната стойност на $D_{\vect{u}}f$ е $\|\grad f\|$, постигана
+в посока $\vect{u}=\dfrac{\grad f}{\|\grad f\|}$.
+Минималната е $-\|\grad f\|$ (в обратна посока).
+\end{theorem}
+
+\begin{proof}
+$D_{\vect{u}}f=\grad f\cdot \vect{u}=\|\grad f\|\cos\theta$,
+където $\theta$ е ъгълът между $\grad f$ и $\vect{u}$.
+Максимумът е при $\theta=0$, т.е. $\vect{u}\parallel\grad f$.
+\end{proof}
+
+\minitask{Намерете $D_{\vect{u}}f(1,0)$ за $f(x,y)=x^2+y^2$ и
+$\vect{u}=\frac{1}{\sqrt{2}}(1,1)$.}
+\answer{$\grad f=(2x,2y)$, в $(1,0)$: $(2,0)$.
+$D_{\vect{u}}f=\frac{2\cdot 1+0\cdot 1}{\sqrt{2}}=\boxed{\sqrt{2}}$.}
+
+\minitask{За $f(x,y)=3x-4y$ в каква посока нараства най-бързо? С каква скорост?}
+\answer{$\grad f=(3,-4)$. Посока: $\frac{1}{5}(3,-4)$.
+Скорост: $\|\grad f\|=\sqrt{9+16}=\boxed{5}$.}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.3]
+  \draw[->] (-0.5,0) -- (3,0) node[right] {$x$};
+  \draw[->] (0,-0.5) -- (0,2.5) node[above] {$y$};
+  % Gradient
+  \draw[-{Stealth[length=3mm]},thick,blue] (0,0) -- (2,0.8)
+    node[above right] {$\grad f$};
+  % Direction u
+  \draw[-{Stealth[length=3mm]},thick,red] (0,0) -- (1.2,1.6)
+    node[above] {$\vect{u}$};
+  % Projection
+  \draw[dashed,gray] (1.2,1.6) -- (1.34,0.54);
+  \draw[-{Stealth[length=2mm]},thick,green!60!black] (0,0) -- (1.34,0.54)
+    node[below right] {\small проекция};
+  % Angle arc
+  \draw[thick] (0.7,0.28) arc (22:53:0.75);
+  \node at (0.55,0.55) {\small $\theta$};
+\end{tikzpicture}
+\caption{Насочената производна $D_{\vect u}f=\|\grad f\|\cos\theta$
+е проекцията на $\grad f$ върху $\vect u$.}
+\end{figure}
+
+% ============================================================
+\section{Линейна апроксимация и допирателна равнина}
+
+За функция от една променлива: $f(x_0+\Delta x)\approx f(x_0)+f'(x_0)\Delta x$.
+
+За функция от \textbf{две} променливи:
+\[
+ f(x_0+\Delta x,\, y_0+\Delta y)
+ \approx f(x_0,y_0)+f_x(x_0,y_0)\,\Delta x+f_y(x_0,y_0)\,\Delta y.
+\]
+
+Допирателната \textbf{равнина} към повърхността $z=f(x,y)$ в точка
+$(x_0,y_0,f(x_0,y_0))$:
+\[
+ z=f(x_0,y_0)+f_x(x_0,y_0)(x-x_0)+f_y(x_0,y_0)(y-y_0).
+\]
+
+Компактно с градиента:
+\[
+z \approx f(\vect{a}) + \grad f(\vect{a})\cdot (\vect{x}-\vect{a}).
+\]
+
+\minitask{Намерете допирателната равнина към $z=x^2+2y^2$ в $(1,1)$.}
+\answer{$f_x=2x$, $f_y=4y$, $f(1,1)=3$.
+Равнина: $z=3+2(x-1)+4(y-1)=\boxed{2x+4y-3}$.}
+
+\minitask{Апроксимирайте $f(1.02,\,0.97)$ за $f(x,y)=xy+y^2$
+около $(1,1)$.}
+\answer{$f(1,1)=1+1=2$, $f_x=y=1$, $f_y=x+2y=3$.
+$\Delta x=0.02$, $\Delta y=-0.03$.
+$f\approx 2+1\cdot 0.02+3\cdot(-0.03)=2+0.02-0.09=\boxed{1.93}$.}
+
+\minitask{Апроксимирайте $\sqrt{(3.02)^2+(3.97)^2}$ чрез линеаризация
+на $f(x,y)=\sqrt{x^2+y^2}$ около $(3,4)$.}
+\answer{$f(3,4)=5$, $f_x=\frac{x}{\sqrt{x^2+y^2}}=\frac{3}{5}$,
+$f_y=\frac{y}{\sqrt{x^2+y^2}}=\frac{4}{5}$.
+$\Delta x=0.02$, $\Delta y=-0.03$.
+$f\approx 5+\frac{3}{5}(0.02)+\frac{4}{5}(-0.03)
+=5+0.012-0.024=\boxed{4.988}$.}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  view={60}{25},
+  axis lines=center,
+  xlabel={$x$}, ylabel={$y$}, zlabel={$z$},
+  xmin=0, xmax=2,
+  ymin=0, ymax=2,
+  zmin=0, zmax=7,
+  width=0.8\textwidth,
+  height=0.34\textheight,
+  samples=20,
+  domain=0:2,
+  y domain=0:2
+]
+\addplot3[surf,opacity=0.6, colormap/viridis, shader=interp] {x^2+2*y^2};
+\addplot3[surf,opacity=0.35, colormap/hot, shader=interp, domain=0:2,
+  y domain=0:2] {2*x+4*y-3};
+\addplot3[only marks, mark=*, mark size=2pt] coordinates {(1,1,3)};
+\end{axis}
+\end{tikzpicture}
+\caption{Повърхност $z=x^2+2y^2$ (синьо) и допирателна равнина $z=2x+4y-3$
+(червено) в точка $(1,1,3)$.}
+\end{figure}
+
+% ============================================================
+\section{Ниви линии и геометричен смисъл на градиента}
+
+Нека $f(x,y)=c$ е линия на ниво.
+
+\begin{theorem}
+Ако $f$ е диференцируема и $(x_0,y_0)$ лежи на нивото $f=c$, то
+$\grad f(x_0,y_0)$ е \textbf{перпендикулярен} на допирателната към
+линията на ниво.
+\end{theorem}
+
+\begin{proof}
+Нека $\vect{r}(t)=(x(t),y(t))$ е параметризация на нивото и
+$\vect{r}(0)=(x_0,y_0)$. Тогава $f(x(t),y(t))\equiv c$.
+Диференцираме по $t$:
+\[
+ f_x\,x'(0)+f_y\,y'(0)=0
+ \quad\Longrightarrow\quad
+ \grad f \cdot \vect{r}'(0)=0.
+\]
+Следователно $\grad f$ е перпендикулярен на $\vect{r}'(0)$ (допирателния
+вектор на нивото).
+\end{proof}
+
+\textbf{Приложение:} Уравнение на \emph{допирателната права} към нивото
+$f(x,y)=c$ в точка $(x_0,y_0)$:
+\[
+f_x(x_0,y_0)(x-x_0)+f_y(x_0,y_0)(y-y_0)=0.
+\]
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.1]
+  \draw[->] (-2.8,0) -- (2.8,0) node[right] {$x$};
+  \draw[->] (0,-2.8) -- (0,2.8) node[above] {$y$};
+  % Elliptic contours for f = x^2 + 2y^2
+  \foreach \a/\b in {1.0/0.707, 1.414/1.0, 1.732/1.225} {
+    \draw[gray!70, thick] (0,0) ellipse ({\a} and {\b});
+  }
+  \node[gray, below right] at (1.0,0) {\small $c_1$};
+  \node[gray, below right] at (1.414,0) {\small $c_2$};
+  \node[gray, below right] at (1.732,0) {\small $c_3$};
+  % Point on c_2
+  \filldraw[blue] (1,0.707) circle (1.5pt);
+  \node[blue, above right] at (1,0.707) {$(x_0,y_0)$};
+  % Gradient arrow
+  \draw[-{Stealth[length=3mm]},thick,blue] (1,0.707) -- (1.8,1.707)
+    node[right] {$\grad f$};
+  % Tangent line to contour
+  \draw[thick,red] (0.3,0.92) -- (1.7,0.49);
+  \node[red] at (2.1,0.5) {\small допир.};
+\end{tikzpicture}
+\caption{Елиптични ниви линии на $f(x,y)=x^2+2y^2$.
+Градиентът е перпендикулярен на всяка нивова крива.}
+\end{figure}
+
+\minitask{За $f(x,y)=x^2+y^2$ намерете допирателната права към нивото
+$f=5$ в точка $(1,2)$.}
+\answer{$\grad f=(2x,2y)=(2,4)$. Нормала: $(2,4)$, или $(1,2)$.
+Уравнение: $1\cdot(x-1)+2\cdot(y-2)=0$, т.е. $\boxed{x+2y-5=0}$.}
+
+% ============================================================
+\section{Верижно правило за функции на няколко променливи}
+
+В едномерния случай: $(f(g(x)))'=f'(g(x))\,g'(x)$.
+
+Нека сега $f(x,y)$ и $x=x(t)$, $y=y(t)$. Тогава $F(t)=f(x(t),y(t))$ и:
+\[
+\frac{dF}{dt}=\frac{\partial f}{\partial x}\,\frac{dx}{dt}
+  +\frac{\partial f}{\partial y}\,\frac{dy}{dt}
+  =\grad f\cdot \vect{r}'(t).
+\]
+
+Ако $x=x(s,t)$, $y=y(s,t)$:
+\[
+\frac{\partial f}{\partial s}
+  = f_x\,\frac{\partial x}{\partial s}+f_y\,\frac{\partial y}{\partial s},
+\qquad
+\frac{\partial f}{\partial t}
+  = f_x\,\frac{\partial x}{\partial t}+f_y\,\frac{\partial y}{\partial t}.
+\]
+
+\minitask{Нека $f(x,y)=x^2y$ и $x=\cos t$, $y=\sin t$.
+Намерете $\frac{dF}{dt}$ при $t=\frac{\pi}{4}$.}
+\answer{$f_x=2xy$, $f_y=x^2$, $x'=-\sin t$, $y'=\cos t$.\\
+$\frac{dF}{dt}=2xy(-\sin t)+x^2\cos t$.
+При $t=\frac\pi4$: $x=y=\frac{1}{\sqrt2}$.\\
+$=2\cdot\frac{1}{\sqrt{2}}\cdot\frac{1}{\sqrt{2}}\cdot\left(-\frac{1}{\sqrt{2}}\right)
++\frac{1}{2}\cdot\frac{1}{\sqrt{2}}
+=-\frac{1}{\sqrt{2}}+\frac{1}{2\sqrt{2}}
+=\boxed{-\frac{1}{2\sqrt{2}}}$.}
+
+% ============================================================
+\section{Втори частни производни и тест за екстремум}
+
+\subsection{Втори производни}
+Ако $f_x$ и $f_y$ са сами диференцируеми, можем да вземем техните
+частни производни:
+\[
+f_{xx}=\frac{\partial^2 f}{\partial x^2},\quad
+f_{xy}=\frac{\partial^2 f}{\partial y\,\partial x},\quad
+f_{yx}=\frac{\partial^2 f}{\partial x\,\partial y},\quad
+f_{yy}=\frac{\partial^2 f}{\partial y^2}.
+\]
+
+\begin{theorem}[Шварц / Клеро]
+Ако $f_{xy}$ и $f_{yx}$ са непрекъснати, то $f_{xy}=f_{yx}$
+(смесените производни са равни, реда не е важен).
+\end{theorem}
+
+\minitask{За $f(x,y)=x^3+x^2y^3-2y^2$ проверете, че $f_{xy}=f_{yx}$.}
+\answer{$f_x=3x^2+2xy^3$, $f_{xy}=6xy^2$.
+$f_y=3x^2y^2-4y$, $f_{yx}=6xy^2$. Наистина $f_{xy}=f_{yx}=\boxed{6xy^2}$.}
+
+\subsection{Хесиева матрица}
+Втората производна се събира в \textbf{Хесиева матрица}:
+\[
+H_f(x,y)=\begin{pmatrix}
+ f_{xx} & f_{xy}\\
+ f_{yx} & f_{yy}
+\end{pmatrix}.
+\]
+
+\subsection{Тест за екстремум (за двe променливи)}
+Нека $\grad f(x_0,y_0)=\vect{0}$ (критична точка).
+Дефинираме \textbf{дискриминанта}:
+\[
+D = f_{xx}(x_0,y_0)\,f_{yy}(x_0,y_0) - \bigl(f_{xy}(x_0,y_0)\bigr)^2
+  = \det H_f(x_0,y_0).
+\]
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Условие} & \textbf{Извод} \\
+\hline
+$D>0$ и $f_{xx}>0$ & локален \textbf{минимум} \\
+\hline
+$D>0$ и $f_{xx}<0$ & локален \textbf{максимум} \\
+\hline
+$D<0$ & \textbf{седлова точка} \\
+\hline
+$D=0$ & тестът е \textbf{неубедителен} \\
+\hline
+\end{tabular}
+\end{center}
+
+\minitask{Намерете и класифицирайте критичните точки на
+$f(x,y)=x^2+y^2-4x-2y$.}
+\answer{$f_x=2x-4=0\Rightarrow x=2$,
+$f_y=2y-2=0\Rightarrow y=1$.
+Критична точка: $(2,1)$.
+$f_{xx}=2$, $f_{yy}=2$, $f_{xy}=0$,
+$D=4-0=4>0$ и $f_{xx}=2>0$.
+$\Rightarrow$ \textbf{локален минимум} в $\boxed{(2,1)}$.}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  view={50}{30},
+  axis lines=center,
+  xlabel={$x$}, ylabel={$y$}, zlabel={$z$},
+  xmin=-1.5, xmax=1.5,
+  ymin=-1.5, ymax=1.5,
+  zmin=-1.5, zmax=1.5,
+  width=0.75\textwidth,
+  height=0.35\textheight,
+  samples=25,
+  domain=-1.5:1.5,
+  y domain=-1.5:1.5
+]
+\addplot3[surf, opacity=0.65, colormap/cool, shader=interp] {x^2-y^2};
+\addplot3[only marks, mark=*, mark size=2.5pt, red] coordinates {(0,0,0)};
+\end{axis}
+\end{tikzpicture}
+\caption{Седлова точка на $z=x^2-y^2$ в началото. Повърхността
+се ``качва'' по $x$ и ``слиза'' по $y$.}
+\end{figure}
+
+% ============================================================
+\section{Кога частните производни не са достатъчни}
+
+Съществуват функции, за които частните производни съществуват в
+дадена точка, но функцията \textbf{не е диференцируема} там.
+
+\textbf{Пример:}
+\[
+ f(x,y)=\begin{cases}
+ \dfrac{x^2y}{x^2+y^2}, & (x,y)\neq(0,0),\\[6pt]
+ 0, & (x,y)=(0,0).
+ \end{cases}
+\]
+
+\textbf{Частни производни в $(0,0)$:}
+\[
+f_x(0,0)=\lim_{h\to 0}\frac{f(h,0)-f(0,0)}{h}
+  =\lim_{h\to 0}\frac{0}{h}=0,
+\]
+\[
+f_y(0,0)=\lim_{h\to 0}\frac{f(0,h)-f(0,0)}{h}
+  =\lim_{h\to 0}\frac{0}{h}=0.
+\]
+
+\textbf{Но} по правата $y=x$:
+$f(t,t)=\frac{t^3}{2t^2}=\frac{t}{2}\to 0$,
+а по правата $y=x^2$:
+$f(t,t^2)=\frac{t^4}{t^2+t^4}=\frac{t^2}{1+t^2}\to 0$.
+
+Линейната апроксимация $L=0+0\cdot\Delta x+0\cdot\Delta y=0$ не
+приближава $f$ добре по всички пътища (грешката не е $o(\|\Delta\|)$),
+следователно $f$ \textbf{не е диференцируема} в $(0,0)$.
+
+\textbf{Извод:} Диференцируемостта е \emph{по-силно} условие от
+съществуването на частни производни. Достатъчно условие:
+\emph{$f_x$ и $f_y$ са непрекъснати} $\Rightarrow$ $f$ е диференцируема.
+
+% ============================================================
+\section{Приложение: градиентен спуск (Gradient Descent)}
+
+В машинното обучение искаме да \textbf{минимизираме} функция на загуба
+$L(\vect{w})$, зависеща от тегла $\vect{w}=(w_1,\ldots,w_n)$.
+
+\textbf{Алгоритъм:}
+\[
+\vect{w}_{\text{ново}} = \vect{w}_{\text{старо}} - \alpha\,\grad L(\vect{w}_{\text{старо}}),
+\]
+където $\alpha>0$ е \emph{скорост на обучение} (learning rate).
+
+\textbf{Защо работи?} Градиентът сочи ``нагоре'' (най-бързо нарастване).
+Вървим в обратна посока, за да намалим $L$.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.2]
+  % Contour ellipses
+  \foreach \a/\b in {0.5/0.3, 1.0/0.6, 1.5/0.9, 2.0/1.2} {
+    \draw[gray!50, thick] (0,0) ellipse ({\a} and {\b});
+  }
+  \node[gray] at (0,-0.1) {\small min};
+  % Gradient descent path
+  \filldraw[red] (1.8,0.9) circle (1.5pt);
+  \draw[-{Stealth},thick,red] (1.8,0.9) -- (1.2,0.55);
+  \filldraw[red] (1.2,0.55) circle (1.5pt);
+  \draw[-{Stealth},thick,red] (1.2,0.55) -- (0.7,0.25);
+  \filldraw[red] (0.7,0.25) circle (1.5pt);
+  \draw[-{Stealth},thick,red] (0.7,0.25) -- (0.3,0.1);
+  \filldraw[red] (0.3,0.1) circle (1.5pt);
+  \draw[-{Stealth},thick,red] (0.3,0.1) -- (0.1,0.03);
+  \filldraw[red] (0.1,0.03) circle (1.5pt);
+  % Labels
+  \node[red, above right] at (1.8,0.9) {$\vect{w}_0$};
+  \node[red, right] at (0.7,0.25) {\small $-\alpha\grad L$};
+\end{tikzpicture}
+\caption{Градиентен спуск: стъпваме в обратна посока на градиента.
+Нивата са елипси на $L$.}
+\end{figure}
+
+\minitask{Нека $L(w_1,w_2)=w_1^2+4w_2^2$.
+Старти от $\vect{w}=(2,1)$ с $\alpha=0.1$.
+Намерете $\vect{w}_{\text{ново}}$.}
+\answer{$\grad L=(2w_1,8w_2)=(4,8)$.
+$\vect{w}_{\text{ново}}=(2,1)-0.1\cdot(4,8)=(2-0.4,\;1-0.8)=\boxed{(1.6,\,0.2)}$.}
+
+% ============================================================
+\section{Теория-куиз (без смятане)}
+
+\begin{enumerate}
+  \item Какво означава $\dfrac{\partial f}{\partial x}$ с думи?
+  \item Ако $\grad f(a,b)=\vect{0}$, какво можем да кажем за точката $(a,b)$?
+  \item Защо градиентът е перпендикулярен на нивата?
+  \item Каква е разликата между $f_x$ и $D_{\vect{u}}f$?
+  \item Ако $D>0$ и $f_{xx}>0$, какъв тип екстремум имаме?
+  \item Защо в градиентния спуск вървим в посока $-\grad L$?
+  \item Може ли функция с нулеви частни производни в точка да не е
+        диференцируема там?
+  \item Каква е геометричната интерпретация на допирателната равнина?
+\end{enumerate}
+
+\textbf{Кратки отговори:}
+\begin{enumerate}
+  \item Скоростта на промяна на $f$, когато се движим само по оста $x$
+        (с фиксирано $y$).
+  \item Критична точка --- кандидат за минимум, максимум или седлова точка.
+  \item Защото по нивото $f=c$ функцията е постоянна, т.е. промяната по
+        допирателния вектор е нула: $\grad f\cdot\vect{r}'=0$.
+  \item $f_x$ е частна производна (промяна по оста $x$), а
+        $D_{\vect{u}}f=\grad f\cdot\vect{u}$ е промяна в произволна посока.
+  \item Локален минимум.
+  \item Защото $\grad L$ сочи ``нагоре'' (нарастване), а ние искаме намаляване.
+  \item Да --- примерът $f(x,y)=\frac{x^2y}{x^2+y^2}$.
+  \item Най-доброто линейно приближение на повърхността в дадена точка.
+\end{enumerate}
+
+% ============================================================
+\section{Задачи за самостоятелна работа}
+
+\begin{zadachi}
+  \item Намерете $f_x$ и $f_y$ за $f(x,y)=x^2y-3x+y^3$.
+  \item Намерете $\grad f(1,-2)$ за функцията от задача~1.
+  \item Намерете $f_x$ и $f_y$ за $f(x,y)=e^{x^2+y}$.
+  \item Намерете $f_x$ и $f_y$ за $f(x,y)=\ln(x^2+y^2)$.
+  \item Намерете $\grad f(1,1)$ за $f(x,y)=\dfrac{x}{x+y}$.
+  \item Намерете насочената производна на $f(x,y)=x^2+xy+y^2$
+        в точка $(0,1)$ по посока на $(1,1)$.
+  \item Намерете $D_{\vect{u}}f(1,1)$ за $f(x,y)=x^2y$ и
+        посока $\vect{u}=\frac{1}{\sqrt{5}}(2,-1)$.
+  \item За $f(x,y)=x e^y$ намерете посоката на най-бързо нарастване
+        и скоростта в точка $(0,0)$.
+  \item За $f(x,y)=x^2+y^2$ намерете допирателната права към нивото
+        $f=5$ в точка $(1,2)$.
+  \item Намерете уравнението на допирателната равнина към $z=x^2+2y^2$
+        в точка $(1,1)$.
+  \item Намерете допирателната равнина към $z=\sin x\cos y$ в $(0,0)$.
+  \item Използвайте линейна апроксимация, за да оцените
+        $f(1.02,0.97)$ за $f(x,y)=xy+y^2$, около $(1,1)$.
+  \item Използвайте линейна апроксимация, за да оцените
+        $f(1.02,1.98)$ за $f(x,y)=\sqrt{x^2+y^2}$, около $(1,2)$.
+  \item Намерете критичните точки на $f(x,y)=x^2+y^2-4x-2y$
+        и ги класифицирайте.
+  \item Намерете и класифицирайте критичните точки на
+        $f(x,y)=x^2-y^2+2x-4y$.
+  \item Намерете и класифицирайте критичните точки на
+        $f(x,y)=x^3+y^3-3xy$.
+  \item Намерете $f_{xx}$, $f_{xy}$, $f_{yy}$ за $f(x,y)=x^3y+e^{xy}$.
+  \item Нека $f(x,y)=x^2y$ и $x=\cos t$, $y=\sin t$.
+        Намерете $\frac{dF}{dt}$.
+  \item Нека $f(x,y)=\ln(x^2+y^2)$ и $x=e^t$, $y=e^{-t}$.
+        Намерете $\frac{dF}{dt}$.
+  \item За $f(x,y)=\ln(x^2+y^2)$ намерете $\grad f(1,1)$ и
+        насочената производна по посока на $(1,0)$.
+  \item Проверете диференцируемостта на
+  \[
+  f(x,y)=\begin{cases}
+  \dfrac{x^2y}{x^2+y^2}, & (x,y)\neq(0,0),\\[6pt]
+  0, & (x,y)=(0,0),
+  \end{cases}
+  \]
+  в точка $(0,0)$.
+  \item Нека $L(w_1,w_2)=(w_1-3)^2+(w_2+1)^2$.
+        Намерете минимума и направете една стъпка градиентен спуск
+        от $(0,0)$ с $\alpha=0.5$.
+  \item За $f(x,y)=4x^2+y^2$ намерете посоката, в която
+        $D_{\vect{u}}f(1,2)=0$ (перпендикулярна на градиента).
+  \item Намерете и класифицирайте критичните точки на
+        $f(x,y)=xy-x^3-y^3$.
+  \item За $f(x,y,z)=x^2+2y^2+3z^2-2xy$ намерете $\grad f$
+        и $\grad f(1,1,1)$.
+\end{zadachi}
+
+% ============================================================
+\section{Подробни решения (стъпка по стъпка)}
+
+\subsection*{Решение на задача 1}
+$f(x,y)=x^2y-3x+y^3$.
+
+Диференцираме по $x$ ($y$ е конст.):
+\[
+f_x = 2xy - 3.
+\]
+Диференцираме по $y$ ($x$ е конст.):
+\[
+f_y = x^2 + 3y^2.
+\]
+\[
+\boxed{f_x=2xy-3,\quad f_y=x^2+3y^2}.
+\]
+
+\subsection*{Решение на задача 2}
+От задача 1: $f_x=2xy-3$, $f_y=x^2+3y^2$.
+
+В точка $(1,-2)$:
+\[
+f_x(1,-2)=2\cdot 1\cdot(-2)-3=-7,
+\quad
+f_y(1,-2)=1^2+3\cdot 4=13.
+\]
+\[
+\boxed{\grad f(1,-2)=(-7,\,13)}.
+\]
+
+\subsection*{Решение на задача 3}
+$f(x,y)=e^{x^2+y}$.
+
+По верижно правило:
+\[
+f_x = e^{x^2+y}\cdot 2x = 2x\,e^{x^2+y},
+\quad
+f_y = e^{x^2+y}\cdot 1 = e^{x^2+y}.
+\]
+\[
+\boxed{f_x=2x\,e^{x^2+y},\quad f_y=e^{x^2+y}}.
+\]
+
+\subsection*{Решение на задача 4}
+$f(x,y)=\ln(x^2+y^2)$.
+\[
+f_x = \frac{2x}{x^2+y^2},\qquad
+f_y = \frac{2y}{x^2+y^2}.
+\]
+\[
+\boxed{f_x=\frac{2x}{x^2+y^2},\quad f_y=\frac{2y}{x^2+y^2}}.
+\]
+
+\subsection*{Решение на задача 5}
+$f(x,y)=\dfrac{x}{x+y}$.
+
+По правило за частно (по $x$):
+\[
+f_x = \frac{1\cdot(x+y)-x\cdot 1}{(x+y)^2}=\frac{y}{(x+y)^2}.
+\]
+По $y$:
+\[
+f_y = \frac{0\cdot(x+y)-x\cdot 1}{(x+y)^2}=-\frac{x}{(x+y)^2}.
+\]
+В $(1,1)$:
+\[
+f_x(1,1)=\frac{1}{4},\quad f_y(1,1)=-\frac{1}{4}.
+\]
+\[
+\boxed{\grad f(1,1)=\left(\frac{1}{4},\,-\frac{1}{4}\right)}.
+\]
+
+\subsection*{Решение на задача 6}
+$f(x,y)=x^2+xy+y^2$, точка $(0,1)$, посока $(1,1)$.
+
+Първо нормираме: $\vect{u}=\frac{1}{\sqrt{2}}(1,1)$.
+
+$\grad f=(2x+y,\;x+2y)$.
+В $(0,1)$: $\grad f=(1,2)$.
+\[
+D_{\vect{u}}f=\grad f\cdot\vect{u}
+=\frac{1}{\sqrt{2}}(1\cdot 1+2\cdot 1)=\boxed{\frac{3}{\sqrt{2}}}.
+\]
+
+\subsection*{Решение на задача 7}
+$f(x,y)=x^2y$, точка $(1,1)$,
+$\vect{u}=\frac{1}{\sqrt{5}}(2,-1)$.
+
+$\grad f=(2xy,\,x^2)$.
+В $(1,1)$: $\grad f=(2,1)$.
+\[
+D_{\vect{u}}f=\frac{1}{\sqrt{5}}(2\cdot 2+1\cdot(-1))
+=\boxed{\frac{3}{\sqrt{5}}}.
+\]
+
+\subsection*{Решение на задача 8}
+$f(x,y)=x e^y$.
+
+$f_x=e^y$, $f_y=xe^y$.
+В $(0,0)$: $\grad f=(e^0,\,0\cdot e^0)=(1,0)$.
+
+Посока на най-бързо нарастване: $(1,0)$ (по положителната ос $x$).
+Скорост: $\|\grad f\|=1$.
+\[
+\boxed{\text{Посока }(1,0),\quad\text{скорост }1}.
+\]
+
+\subsection*{Решение на задача 9}
+$f(x,y)=x^2+y^2$, ниво $f=5$, точка $(1,2)$.
+
+$\grad f=(2x,2y)=(2,4)$. Нормален вектор: $(2,4)$, или $(1,2)$.
+
+Уравнение: $1\cdot(x-1)+2\cdot(y-2)=0$, т.е.:
+\[
+\boxed{x+2y-5=0}.
+\]
+
+\subsection*{Решение на задача 10}
+$z=x^2+2y^2$, точка $(1,1)$.
+
+$f(1,1)=1+2=3$, $f_x=2x=2$, $f_y=4y=4$.
+\[
+z=3+2(x-1)+4(y-1)=\boxed{2x+4y-3}.
+\]
+
+\subsection*{Решение на задача 11}
+$z=\sin x\cos y$, точка $(0,0)$.
+
+$f(0,0)=\sin 0\cdot\cos 0=0$.
+$f_x=\cos x\cos y$, в $(0,0)$: $1$.
+$f_y=-\sin x\sin y$, в $(0,0)$: $0$.
+\[
+z=0+1\cdot(x-0)+0\cdot(y-0)=\boxed{x}.
+\]
+
+\subsection*{Решение на задача 12}
+$f(x,y)=xy+y^2$, около $(1,1)$.
+
+$f(1,1)=1+1=2$, $f_x=y=1$, $f_y=x+2y=3$.
+
+$\Delta x=0.02$, $\Delta y=-0.03$:
+\[
+f(1.02,0.97)\approx 2+1\cdot 0.02+3\cdot(-0.03)
+=2+0.02-0.09=\boxed{1.93}.
+\]
+
+\subsection*{Решение на задача 13}
+$f(x,y)=\sqrt{x^2+y^2}$, около $(1,2)$.
+
+$f(1,2)=\sqrt{5}$.
+$f_x=\frac{x}{\sqrt{x^2+y^2}}=\frac{1}{\sqrt{5}}$,
+$f_y=\frac{y}{\sqrt{x^2+y^2}}=\frac{2}{\sqrt{5}}$.
+
+$\Delta x=0.02$, $\Delta y=-0.02$:
+\[
+f(1.02,1.98)\approx\sqrt{5}+\frac{1}{\sqrt{5}}\cdot 0.02
++\frac{2}{\sqrt{5}}\cdot(-0.02)
+=\sqrt{5}-\frac{0.02}{\sqrt{5}}.
+\]
+\[
+\boxed{f(1.02,1.98)\approx\sqrt{5}-\frac{0.02}{\sqrt{5}}
+\approx 2.2316}.
+\]
+
+\subsection*{Решение на задача 14}
+$f(x,y)=x^2+y^2-4x-2y$.
+
+$f_x=2x-4=0\Rightarrow x=2$, $f_y=2y-2=0\Rightarrow y=1$.
+
+Критична точка: $(2,1)$.
+
+$f_{xx}=2$, $f_{yy}=2$, $f_{xy}=0$.
+$D=2\cdot 2-0^2=4>0$ и $f_{xx}=2>0$.
+\[
+\boxed{\text{Локален минимум в }(2,1),\quad f(2,1)=-5}.
+\]
+
+\subsection*{Решение на задача 15}
+$f(x,y)=x^2-y^2+2x-4y$.
+
+$f_x=2x+2=0\Rightarrow x=-1$, $f_y=-2y-4=0\Rightarrow y=-2$.
+
+Критична точка: $(-1,-2)$.
+
+$f_{xx}=2$, $f_{yy}=-2$, $f_{xy}=0$.
+$D=2\cdot(-2)-0=-4<0$.
+\[
+\boxed{\text{Седлова точка в }(-1,-2)}.
+\]
+
+\subsection*{Решение на задача 16}
+$f(x,y)=x^3+y^3-3xy$.
+
+$f_x=3x^2-3y=0\Rightarrow y=x^2$.
+$f_y=3y^2-3x=0\Rightarrow x=y^2$.
+
+Заместваме $y=x^2$ в $x=y^2$: $x=(x^2)^2=x^4$.
+$x^4-x=0\Rightarrow x(x^3-1)=0\Rightarrow x=0$ или $x=1$.
+
+Критични точки: $(0,0)$ с $y=0$ и $(1,1)$ с $y=1$.
+
+$f_{xx}=6x$, $f_{yy}=6y$, $f_{xy}=-3$.
+
+\textbf{В $(0,0)$:} $D=0\cdot 0-9=-9<0$.
+$\Rightarrow$ Седлова точка.
+
+\textbf{В $(1,1)$:} $D=6\cdot 6-9=27>0$, $f_{xx}=6>0$.
+$\Rightarrow$ Локален минимум, $f(1,1)=1+1-3=-1$.
+\[
+\boxed{(0,0)\text{ --- седлова},\quad (1,1)\text{ --- лок.\ мин.\ с }f=-1}.
+\]
+
+\subsection*{Решение на задача 17}
+$f(x,y)=x^3y+e^{xy}$.
+
+$f_x = 3x^2y + ye^{xy}$.
+
+$f_{xx} = 6xy + y^2e^{xy}$.
+
+$f_{xy} = 3x^2 + e^{xy} + xye^{xy}$.
+
+$f_y = x^3 + xe^{xy}$.
+
+$f_{yy} = x^2e^{xy}$.
+\[
+\boxed{f_{xx}=6xy+y^2e^{xy},\quad f_{xy}=3x^2+e^{xy}+xye^{xy},
+\quad f_{yy}=x^2e^{xy}}.
+\]
+
+\subsection*{Решение на задача 18}
+$f(x,y)=x^2y$, $x=\cos t$, $y=\sin t$.
+
+$f_x=2xy$, $f_y=x^2$, $x'=-\sin t$, $y'=\cos t$.
+\[
+\frac{dF}{dt}=2xy(-\sin t)+x^2\cos t
+=2\cos t\sin t(-\sin t)+\cos^2 t\cos t.
+\]
+\[
+\boxed{\frac{dF}{dt}=-2\cos t\sin^2 t+\cos^3 t
+=\cos t(\cos^2 t-2\sin^2 t)}.
+\]
+
+\subsection*{Решение на задача 19}
+$f(x,y)=\ln(x^2+y^2)$, $x=e^t$, $y=e^{-t}$.
+
+$f_x=\frac{2x}{x^2+y^2}$, $f_y=\frac{2y}{x^2+y^2}$.
+$x'=e^t$, $y'=-e^{-t}$.
+\[
+\frac{dF}{dt}=\frac{2x}{x^2+y^2}\cdot e^t+\frac{2y}{x^2+y^2}\cdot(-e^{-t})
+=\frac{2e^{2t}-2e^{-2t}}{e^{2t}+e^{-2t}}.
+\]
+\[
+\boxed{\frac{dF}{dt}=\frac{2(e^{2t}-e^{-2t})}{e^{2t}+e^{-2t}}
+=2\tanh(2t)}.
+\]
+
+\subsection*{Решение на задача 20}
+$f(x,y)=\ln(x^2+y^2)$.
+
+$\grad f=\left(\frac{2x}{x^2+y^2},\;\frac{2y}{x^2+y^2}\right)$.
+
+В $(1,1)$: $\grad f=\left(\frac{2}{2},\frac{2}{2}\right)=(1,1)$.
+
+Насочена производна по $(1,0)$ (вече единичен):
+$D_{\vect{u}}f=(1,1)\cdot(1,0)=\boxed{1}$.
+
+\subsection*{Решение на задача 21}
+$f(x,y)=\dfrac{x^2y}{x^2+y^2}$ за $(x,y)\neq(0,0)$, $f(0,0)=0$.
+
+Показахме, че $f_x(0,0)=0$ и $f_y(0,0)=0$ (в секция 8).
+
+Ако $f$ е диференцируема в $(0,0)$, то $f(h,k)\approx 0+0\cdot h+0\cdot k=0$.
+
+Грешката:
+$\frac{|f(h,k)-0|}{\sqrt{h^2+k^2}}
+=\frac{h^2|k|}{(h^2+k^2)^{3/2}}$.
+
+По правата $k=h$: $\frac{h^3}{(2h^2)^{3/2}}=\frac{1}{2\sqrt{2}}\neq 0$.
+
+Следователно грешката не клони към $0$ по всички пътища.
+\[
+\boxed{f\text{ не е диференцируема в }(0,0)}.
+\]
+
+\subsection*{Решение на задача 22}
+$L(w_1,w_2)=(w_1-3)^2+(w_2+1)^2$.
+
+$\grad L=(2(w_1-3),\;2(w_2+1))$.
+$\grad L=\vect{0}\Rightarrow w_1=3,\;w_2=-1$.
+Минимум в $(3,-1)$, $L=0$.
+
+Градиентен спуск от $(0,0)$ с $\alpha=0.5$:
+$\grad L(0,0)=(2(-3),2(1))=(-6,2)$.
+$\vect{w}_1=(0,0)-0.5(-6,2)=(3,-1)$.
+\[
+\boxed{\text{Минимум }(3,-1);\quad
+\text{след 1 стъпка: }\vect{w}_1=(3,-1)\text{ (точно минимумът!)}}.
+\]
+
+\subsection*{Решение на задача 23}
+$f(x,y)=4x^2+y^2$, точка $(1,2)$.
+
+$\grad f=(8x,2y)=(8,4)$.
+
+Насочената производна е нула перпендикулярно на градиента.
+$(8,4)$ е перпендикулярен на $(a,b)$ ако $8a+4b=0$, т.е. $b=-2a$.
+
+Единичен вектор: $\vect{u}=\frac{1}{\sqrt{5}}(1,-2)$.
+\[
+\boxed{\vect{u}=\frac{1}{\sqrt{5}}(1,-2)\text{ (или }
+\frac{1}{\sqrt{5}}(-1,2)\text{)}}.
+\]
+
+\subsection*{Решение на задача 24}
+$f(x,y)=xy-x^3-y^3$.
+
+$f_x=y-3x^2=0$, $f_y=x-3y^2=0$.
+
+От първото: $y=3x^2$.
+Заместваме: $x-3(3x^2)^2=0\Rightarrow x-27x^4=0
+\Rightarrow x(1-27x^3)=0$.
+$x=0\Rightarrow y=0$, или $x^3=\frac{1}{27}\Rightarrow x=\frac{1}{3}
+\Rightarrow y=3\cdot\frac{1}{9}=\frac{1}{3}$.
+
+$f_{xx}=-6x$, $f_{yy}=-6y$, $f_{xy}=1$.
+
+\textbf{В $(0,0)$:} $D=0\cdot 0-1=-1<0$. Седлова.
+
+\textbf{В $\left(\frac13,\frac13\right)$:}
+$f_{xx}=-2$, $f_{yy}=-2$, $D=4-1=3>0$, $f_{xx}<0$.
+Локален максимум.
+$f\!\left(\frac13,\frac13\right)=\frac19-\frac{1}{27}-\frac{1}{27}
+=\frac{3-1-1}{27}=\frac{1}{27}$.
+\[
+\boxed{(0,0)\text{ --- седлова},\quad
+\left(\frac{1}{3},\frac{1}{3}\right)\text{ --- лок.\ макс.\ с }
+f=\frac{1}{27}}.
+\]
+
+\subsection*{Решение на задача 25}
+$f(x,y,z)=x^2+2y^2+3z^2-2xy$.
+\[
+f_x=2x-2y,\quad f_y=4y-2x,\quad f_z=6z.
+\]
+\[
+\grad f=(2x-2y,\;4y-2x,\;6z).
+\]
+В $(1,1,1)$:
+\[
+\grad f(1,1,1)=(2-2,\;4-2,\;6)=\boxed{(0,2,6)}.
+\]
+
+% ============================================================
+\section{Обобщение: какво научихме}
+
+\begin{itemize}
+  \item \textbf{Частни производни:} $f_x$ и $f_y$ --- производни по
+        отделните променливи с фиксиране на останалите.
+  \item \textbf{Градиент:} $\grad f$ --- вектор от частните производни.
+        Сочи в посоката на най-бързо нарастване.
+  \item \textbf{Насочена производна:} $D_{\vect u}f=\grad f\cdot\vect u$
+        --- промяна в произволна посока.
+  \item \textbf{Линейна апроксимация:} $f\approx f(\vect a)+\grad f(\vect a)
+        \cdot(\vect x-\vect a)$.
+  \item \textbf{Допирателна равнина:} обобщение на допирателната права.
+  \item \textbf{Ниви линии:} $\grad f$ е перпендикулярен на тях.
+  \item \textbf{Хесиева матрица и тест:} класификация на критични точки
+        чрез $D=f_{xx}f_{yy}-f_{xy}^2$.
+  \item \textbf{Градиентен спуск:} $\vect w_{\text{ново}}=
+        \vect w-\alpha\grad L$ --- основа на оптимизацията в AI.
+\end{itemize}
+
+\end{document}

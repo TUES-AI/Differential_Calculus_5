@@ -1,0 +1,94 @@
+name: Build LaTeX PDF and Deploy to Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "**/*.tex"
+      - "**/*.bib"
+      - "**/*.sty"
+      - "**/*.cls"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.pdf"
+      - ".github/workflows/latex-pages.yml"
+      - "scripts/generate_index.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  MAIN_TEX: "main.tex" # <-- set your root tex
+  HOMEWORK_TEX: "homework.tex"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX (latexmk)
+        uses: xu-cheng/latex-action@v4
+        with:
+          root_file: ${{ env.MAIN_TEX }}
+          args: -pdf -interaction=nonstopmode -halt-on-error -file-line-error
+          latexmk_shell_escape: true
+
+      - name: Compile LaTeX (homework)
+        if: ${{ hashFiles('homework.tex') != '' }}
+        uses: xu-cheng/latex-action@v4
+        with:
+          root_file: ${{ env.HOMEWORK_TEX }}
+          args: -pdf -interaction=nonstopmode -halt-on-error -file-line-error
+          latexmk_shell_escape: true
+
+      - name: Prepare Pages artifact
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+
+          PDF="${MAIN_TEX%.tex}.pdf"
+          test -f "$PDF"
+
+          # stable name
+          cp "$PDF" dist/document.pdf
+
+          # title auto-detected from GITHUB_REPOSITORY; no need to pass --title
+          python3 scripts/generate_index.py \
+            --out dist/index.html \
+            --pdf document.pdf
+
+          HOMEWORK_PDF="${HOMEWORK_TEX%.tex}.pdf"
+          if [ -f "$HOMEWORK_TEX" ]; then
+            test -f "$HOMEWORK_PDF"
+            mkdir -p dist/homework
+            cp "$HOMEWORK_PDF" dist/homework/document.pdf
+            python3 scripts/generate_index.py \
+              --out dist/homework/index.html \
+              --pdf document.pdf
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
