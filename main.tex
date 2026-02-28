@@ -14,6 +14,7 @@
 \usepackage{booktabs}
 \usepackage{microtype}
 \usepackage{enumitem}
+\usepackage{array}
 
 % --- Диаграми ---
 \usepackage{tikz}
@@ -109,28 +110,47 @@
 
 \begin{figure}[h]
 \centering
-\begin{tikzpicture}[scale=1.4]
+\begin{tikzpicture}[scale=1.55]
   % Axes
-  \draw[->] (-2.5,0) -- (2.5,0) node[right] {$x$};
-  \draw[->] (0,-2.5) -- (0,2.5) node[above] {$y$};
-  % Contour circles
-  \foreach \r/\lbl in {0.6/c_1,1.2/c_2,1.8/c_3} {
-    \draw[gray!70, thick] (0,0) circle (\r);
+  \draw[->] (-2.7,0) -- (2.7,0) node[right] {$x$};
+  \draw[->] (0,-2.7) -- (0,2.7) node[above] {$y$};
+
+  % Contour ellipses (по-реалистично от окръжности)
+  \foreach \a/\b/\labx/\laby/\txt in {
+    0.9/0.55/0.95/-0.55/c_1,
+    1.5/0.95/1.55/-0.95/c_2,
+    2.1/1.35/2.15/-1.30/c_3
+  } {
+    \draw[gray!65, thick] (0,0) ellipse ({\a} and {\b});
+    \node[gray!75] at (\labx,\laby) {\small $\txt$};
   }
-  \node[gray] at (0.4,-0.8) {$c_1$};
-  \node[gray] at (0.8,-1.4) {$c_2$};
-  \node[gray] at (1.2,-2.0) {$c_3$};
-  % Gradient arrow
-  \draw[-{Stealth[length=3mm]},thick,blue] (0.6,0.3) -- (1.6,0.8)
-    node[above] {$\grad f$};
-  % Tangent to contour
-  \draw[thick,red] (0.9,0.82) -- (0.3,1.15);
-  \node[red, right] at (0.9,1.0) {допирателна};
-  % Right angle marker
-  \draw[blue] (0.72,0.54) -- (0.62,0.62) -- (0.70,0.72);
+
+  % Точка на средното ниво
+  \coordinate (P) at (1.25,0.52);
+  \filldraw[black] (P) circle (1.15pt);
+  \node[above right] at (P) {\small $P$};
+
+  % Допирателна в P (червено)
+  \draw[red!80!black, line width=1.0pt] (0.35,1.02) -- (2.15,0.02);
+  \node[red!80!black, above right] at (2.0,0.05) {\small допирателна};
+
+  % Градиент в P (синьо), ясно отделен
+  \draw[-{Stealth[length=3.4mm]},blue!80!black,line width=1.2pt]
+    (P) -- ++(0.95,0.95) node[above right] {\small $\grad f(P)$};
+
+  % Малък ъглов маркер за перпендикулярност
+  \draw[blue!80!black,line width=0.8pt]
+    (1.38,0.39) -- (1.30,0.32) -- (1.38,0.24);
+  \node[blue!80!black] at (1.52,0.30) {\small $90^\circ$};
+
+  % Примерни движения
+  \draw[-{Stealth[length=2.6mm]},teal!70!black,line width=1pt]
+    (P) -- ++(0.45,-0.24) node[right] {\tiny по ниво ($\Delta f\approx 0$)};
+  \draw[-{Stealth[length=2.6mm]},purple!70!black,line width=1pt]
+    (P) -- ++(0.22,0.43) node[above] {\tiny нагоре};
 \end{tikzpicture}
 \caption{Ниви линии и градиент: $\grad f$ сочи в посоката на най-бързо
-нарастване и е \emph{перпендикулярен} на нивата.}
+нарастване и е \emph{перпендикулярен} на допирателната към нивото в точка $P$.}
 \end{figure}
 
 % ============================================================
@@ -161,6 +181,11 @@
 Тя е ``хоризонтален разрез'' на повърхността на височина $c$
 (като контурните линии на топографска карта).
 
+\textbf{Връзка с предишната секция:} В 1D имаме една посока (наляво/надясно),
+а в 2D имаме безкрайно много посоки. Частните производни ще измерят
+промяната по координатните оси, а после градиентът ще ``сглоби''
+цялата картина.
+
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}
@@ -171,9 +196,9 @@
   xmin=-2.2, xmax=2.2,
   ymin=-2.2, ymax=2.2,
   zmin=0, zmax=5,
-  width=0.75\textwidth,
-  height=0.38\textheight,
-  samples=25,
+  width=0.9\textwidth,
+  height=0.45\textheight,
+  samples=35,
   domain=-2:2,
   y domain=-2:2
 ]
@@ -216,7 +241,7 @@ $\partial_x f$, $D_x f$ --- всичко означава едно и също.
   xmin=-2, xmax=2,
   ymin=0, ymax=5,
   width=0.95\textwidth,
-  height=0.28\textheight,
+  height=0.34\textheight,
   samples=200
 ]
 \addplot[blue,thick] {x^2+1};
@@ -236,7 +261,7 @@ $\partial_x f$, $D_x f$ --- всичко означава едно и също.
   xmin=-2, xmax=2,
   ymin=0, ymax=5,
   width=0.95\textwidth,
-  height=0.28\textheight,
+  height=0.34\textheight,
   samples=200
 ]
 \addplot[blue,thick] {x^2+1};
@@ -260,6 +285,22 @@ $\partial_x f$, $D_x f$ --- всичко означава едно и също.
 \minitask{За $f(x,y)=\sin(xy)$ намерете $f_x(1,\pi)$.}
 \answer{$f_x = y\cos(xy)$, $f_x(1,\pi)=\pi\cos(\pi)=\boxed{-\pi}$.}
 
+\textbf{Подробен пример (с връзка към 1D):}
+Нека
+\[
+f(x,y)=x^2y+y^3.
+\]
+Ако фиксираме $y=2$, получаваме едномерна функция
+$g(x)=f(x,2)=2x^2+8$, и тогава
+$g'(x)=4x$. Това е точно $f_x(x,2)$.
+
+Ако фиксираме $x=1$, получаваме
+$h(y)=f(1,y)=y+y^3$, и тогава
+$h'(y)=1+3y^2$. Това е точно $f_y(1,y)$.
+
+Тоест: частните производни не са нова магия --- те са обикновени производни,
+но по ``срезове'' на повърхността.
+
 % ============================================================
 \subsection{Таблица: правила за частно диференциране}
 
@@ -267,7 +308,8 @@ $\partial_x f$, $D_x f$ --- всичко означава едно и също.
 третираме другата променлива като константа.
 
 \begin{center}
-\small
+\renewcommand{\arraystretch}{2.15}
+\setlength{\extrarowheight}{1pt}
 \begin{tabular}{|p{0.32\textwidth}|p{0.58\textwidth}|}
 \hline
 \textbf{Правило} & \textbf{Формула (по $x$, $y$ е конст.)} \\
@@ -328,6 +370,21 @@ $\grad f(1,0)=(e\cdot 1, -e\cdot 0)=\boxed{(e,0)}$.}
 \answer{$f_x=2x-2y=2+2=4$, $f_y=-2x+3y^2=-2+3=1$.
 $\grad f(1,-1)=\boxed{(4,1)}$.}
 
+\textbf{Подробен пример (геометрична интерпретация):}
+Нека $f(x,y)=x^2+4y^2$ и точка $P=(1,1)$.
+\[
+\grad f(P)=(2,8).
+\]
+Ако се движим по единичната посока
+$\vect u_1=(1,0)$, тогава
+$D_{\vect u_1}f(P)=\grad f(P)\cdot\vect u_1=2$.
+Ако се движим по единичната посока
+$\vect u_2=(0,1)$, тогава
+$D_{\vect u_2}f(P)=8$.
+
+Значи около $P$ функцията нараства 4 пъти по-бързо в ``$y$-посока'',
+отколкото в ``$x$-посока''. Това обяснява защо нивата са елипси, а не окръжности.
+
 % ============================================================
 \subsection{Насочена производна}
 Нека $\vect{u}=(u_1,u_2)$ е \textbf{единичен} вектор ($\|\vect{u}\|=1$).
@@ -379,9 +436,26 @@ $D_{\vect{u}}f=\frac{2\cdot 1+0\cdot 1}{\sqrt{2}}=\boxed{\sqrt{2}}$.}
 \answer{$\grad f=(3,-4)$. Посока: $\frac{1}{5}(3,-4)$.
 Скорост: $\|\grad f\|=\sqrt{9+16}=\boxed{5}$.}
 
+\textbf{Подробен пример (неединична посока):}
+Нека $f(x,y)=x^2+y^2$, точка $P=(1,2)$, посока
+$\vect v=(3,4)$.
+Първо нормализираме:
+\[
+\vect u=\frac{\vect v}{\|\vect v\|}=\left(\frac35,\frac45\right).
+\]
+\[
+\grad f(P)=(2,4),
+\qquad
+D_{\vect u}f(P)=\grad f(P)\cdot\vect u
+=2\cdot\frac35+4\cdot\frac45
+=\frac{22}{5}.
+\]
+Ако забравим нормализацията и сметнем със $(3,4)$,
+ще получим число, което не е ``скорост на единица дължина''.
+
 \begin{figure}[h]
 \centering
-\begin{tikzpicture}[scale=1.3]
+\begin{tikzpicture}[scale=1.55]
   \draw[->] (-0.5,0) -- (3,0) node[right] {$x$};
   \draw[->] (0,-0.5) -- (0,2.5) node[above] {$y$};
   % Gradient
@@ -405,6 +479,11 @@ $D_{\vect{u}}f=\frac{2\cdot 1+0\cdot 1}{\sqrt{2}}=\boxed{\sqrt{2}}$.}
 % ============================================================
 \section{Линейна апроксимация и допирателна равнина}
 
+\textbf{Ясна връзка:}
+Частните производни ни дават локалните наклони по осите,
+а линейната апроксимация ги комбинира, за да предскаже
+как се променя $f$ при малко преместване в \emph{произволна} посока.
+
 За функция от една променлива: $f(x_0+\Delta x)\approx f(x_0)+f'(x_0)\Delta x$.
 
 За функция от \textbf{две} променливи:
@@ -423,6 +502,25 @@ $(x_0,y_0,f(x_0,y_0))$:
 \[
 z \approx f(\vect{a}) + \grad f(\vect{a})\cdot (\vect{x}-\vect{a}).
 \]
+
+\textbf{Подробен пример (защо формулата е полезна):}
+Нека
+\[
+f(x,y)=\sqrt{4+x^2+2y^2},
+\qquad
+A=(0,0).
+\]
+Тогава $f(A)=2$, $f_x(A)=0$, $f_y(A)=0$, следователно
+\[
+L(x,y)=2.
+\]
+Това означава, че близо до $(0,0)$ повърхността е почти хоризонтална.
+Например за $(x,y)=(0.1,-0.1)$:
+\[
+f(0.1,-0.1)=\sqrt{4+0.01+0.02}=\sqrt{4.03}\approx 2.0075,
+\]
+а линеаризацията дава $2$ --- грешката е малка и това е целта на локалното
+линейно приближение.
 
 \minitask{Намерете допирателната равнина към $z=x^2+2y^2$ в $(1,1)$.}
 \answer{$f_x=2x$, $f_y=4y$, $f(1,1)=3$.
@@ -452,8 +550,8 @@ $f\approx 5+\frac{3}{5}(0.02)+\frac{4}{5}(-0.03)
   xmin=0, xmax=2,
   ymin=0, ymax=2,
   zmin=0, zmax=7,
-  width=0.8\textwidth,
-  height=0.34\textheight,
+  width=0.92\textwidth,
+  height=0.43\textheight,
   samples=20,
   domain=0:2,
   y domain=0:2
@@ -472,6 +570,11 @@ $f\approx 5+\frac{3}{5}(0.02)+\frac{4}{5}(-0.03)
 \section{Ниви линии и геометричен смисъл на градиента}
 
 Нека $f(x,y)=c$ е линия на ниво.
+
+Тази секция затваря връзката между предишните идеи:
+частни производни $\rightarrow$ градиент $\rightarrow$ геометрия на нивата.
+Ако си представим карта на височините, допирателната към контура е движение
+``по равно ниво'', а градиентът е посоката ``нагоре по най-стръмното''.
 
 \begin{theorem}
 Ако $f$ е диференцируема и $(x_0,y_0)$ лежи на нивото $f=c$, то
@@ -500,7 +603,7 @@ f_x(x_0,y_0)(x-x_0)+f_y(x_0,y_0)(y-y_0)=0.
 
 \begin{figure}[h]
 \centering
-\begin{tikzpicture}[scale=1.1]
+\begin{tikzpicture}[scale=1.35]
   \draw[->] (-2.8,0) -- (2.8,0) node[right] {$x$};
   \draw[->] (0,-2.8) -- (0,2.8) node[above] {$y$};
   % Elliptic contours for f = x^2 + 2y^2
@@ -534,6 +637,11 @@ $f=5$ в точка $(1,2)$.}
 
 В едномерния случай: $(f(g(x)))'=f'(g(x))\,g'(x)$.
 
+Многомерната версия казва същото:
+промяната ``по пътя'' се получава като сума от
+\textit{(чувствителност по всяка променлива)} $\times$
+\textit{(скорост на тази променлива)}.
+
 Нека сега $f(x,y)$ и $x=x(t)$, $y=y(t)$. Тогава $F(t)=f(x(t),y(t))$ и:
 \[
 \frac{dF}{dt}=\frac{\partial f}{\partial x}\,\frac{dx}{dt}
@@ -557,8 +665,25 @@ $\frac{dF}{dt}=2xy(-\sin t)+x^2\cos t$.
 При $t=\frac\pi4$: $x=y=\frac{1}{\sqrt2}$.\\
 $=2\cdot\frac{1}{\sqrt{2}}\cdot\frac{1}{\sqrt{2}}\cdot\left(-\frac{1}{\sqrt{2}}\right)
 +\frac{1}{2}\cdot\frac{1}{\sqrt{2}}
-=-\frac{1}{\sqrt{2}}+\frac{1}{2\sqrt{2}}
-=\boxed{-\frac{1}{2\sqrt{2}}}$.}
+ =-\frac{1}{\sqrt{2}}+\frac{1}{2\sqrt{2}}
+ =\boxed{-\frac{1}{2\sqrt{2}}}$.}
+
+\textbf{Подробен пример (практическо тълкуване):}
+Нека $T(x,y)=x^2+xy$ е температура, а траекторията е
+$x(t)=1+t$, $y(t)=2-t$.
+Тогава
+\[
+\frac{dT}{dt}=T_x\,x'(t)+T_y\,y'(t),
+\qquad
+T_x=2x+y,
+\quad
+T_y=x.
+\]
+При $t=0$: $x=1$, $y=2$, $x'=1$, $y'=-1$.
+\[
+\frac{dT}{dt}\Big|_{t=0}=(2\cdot1+2)\cdot1+1\cdot(-1)=4-1=\boxed{3}.
+\]
+Тоест по тази траектория температурата нараства със скорост $3$ в момента $t=0$.
 
 % ============================================================
 \section{Втори частни производни и тест за екстремум}
@@ -624,6 +749,34 @@ $f_{xx}=2$, $f_{yy}=2$, $f_{xy}=0$,
 $D=4-0=4>0$ и $f_{xx}=2>0$.
 $\Rightarrow$ \textbf{локален минимум} в $\boxed{(2,1)}$.}
 
+\textbf{Подробен пример (с пълна класификация):}
+Нека $f(x,y)=x^2+xy+y^2-6x$.
+
+\textbf{1) Критична точка:}
+\[
+f_x=2x+y-6=0,
+\qquad
+f_y=x+2y=0.
+\]
+От второто $x=-2y$. Замяна в първото:
+$2(-2y)+y-6=0\Rightarrow -3y=6\Rightarrow y=-2$, $x=4$.
+
+\textbf{2) Хесиева матрица:}
+\[
+f_{xx}=2,
+\qquad
+f_{yy}=2,
+\qquad
+f_{xy}=1.
+\]
+\[
+D=2\cdot2-1^2=3>0,
+\qquad
+f_{xx}=2>0.
+\]
+
+Следователно в $(4,-2)$ имаме \textbf{локален минимум}.
+
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}
@@ -634,9 +787,9 @@ $\Rightarrow$ \textbf{локален минимум} в $\boxed{(2,1)}$.}
   xmin=-1.5, xmax=1.5,
   ymin=-1.5, ymax=1.5,
   zmin=-1.5, zmax=1.5,
-  width=0.75\textwidth,
-  height=0.35\textheight,
-  samples=25,
+  width=0.9\textwidth,
+  height=0.43\textheight,
+  samples=35,
   domain=-1.5:1.5,
   y domain=-1.5:1.5
 ]
@@ -700,9 +853,15 @@ $L(\vect{w})$, зависеща от тегла $\vect{w}=(w_1,\ldots,w_n)$.
 \textbf{Защо работи?} Градиентът сочи ``нагоре'' (най-бързо нарастване).
 Вървим в обратна посока, за да намалим $L$.
 
+\textbf{Ясна връзка с насочена производна:}
+ако вземем единична посока $\vect u$, скоростта на промяна е
+$D_{\vect u}L=\grad L\cdot \vect u$. Минималната възможна стойност
+се получава при $\vect u=-\dfrac{\grad L}{\|\grad L\|}$,
+затова gradient descent естествено избира тази посока.
+
 \begin{figure}[h]
 \centering
-\begin{tikzpicture}[scale=1.2]
+\begin{tikzpicture}[scale=1.5]
   % Contour ellipses
   \foreach \a/\b in {0.5/0.3, 1.0/0.6, 1.5/0.9, 2.0/1.2} {
     \draw[gray!50, thick] (0,0) ellipse ({\a} and {\b});
@@ -731,6 +890,28 @@ $L(\vect{w})$, зависеща от тегла $\vect{w}=(w_1,\ldots,w_n)$.
 Намерете $\vect{w}_{\text{ново}}$.}
 \answer{$\grad L=(2w_1,8w_2)=(4,8)$.
 $\vect{w}_{\text{ново}}=(2,1)-0.1\cdot(4,8)=(2-0.4,\;1-0.8)=\boxed{(1.6,\,0.2)}$.}
+
+\textbf{Подробен пример (две поредни стъпки):}
+Същата функция $L(w_1,w_2)=w_1^2+4w_2^2$, същото начало
+$\vect w_0=(2,1)$ и $\alpha=0.1$.
+
+Първа стъпка вече имаме:
+\[
+\vect w_1=(1.6,0.2).
+\]
+
+Втора стъпка:
+\[
+\grad L(\vect w_1)=(2\cdot1.6,\,8\cdot0.2)=(3.2,1.6).
+\]
+\[
+\vect w_2=\vect w_1-0.1\grad L(\vect w_1)
+=(1.6,0.2)-0.1(3.2,1.6)
+=(1.28,0.04).
+\]
+
+Виждаме как координатите се приближават към $(0,0)$,
+където $L$ има минимум.
 
 % ============================================================
 \section{Теория-куиз (без смятане)}
